@@ -84,6 +84,10 @@ resource "aws_security_group_rule" "fargate_pods_ingress_cluster_https" {
   source_security_group_id = aws_security_group.eks_cluster.id
   security_group_id        = aws_security_group.eks_fargate_pods.id
 }
+
+resource "aws_security_group_rule" "nodes_ingress_cluster_kubelet" {
+  description              = "Allow cluster control plane to communicate with node kubelet"
+  type                     = "ingress"
   from_port                = 10250
   to_port                  = 10250
   protocol                 = "tcp"
