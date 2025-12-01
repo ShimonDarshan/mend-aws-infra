@@ -14,23 +14,13 @@ Production-ready Terraform module for deploying AWS EKS clusters with Fargate pr
 
 ```hcl
 module "eks" {
-  source = "./modules/eks"
+  source = "github.com/ShimonDarshan/mend-aws-infra//modules/eks?ref=main"
 
   cluster_name       = "my-cluster"
   kubernetes_version = "1.30"
   vpc_id             = "vpc-xxxxx"
   subnet_ids         = ["subnet-xxxxx", "subnet-yyyyy"]
   fargate_subnet_ids = ["subnet-private1", "subnet-private2"]
-
-  fargate_profiles = {
-    default = {
-      selectors = [
-        {
-          namespace = "default"
-        }
-      ]
-    }
-  }
 
   tags = {
     Environment = "production"
@@ -52,10 +42,10 @@ module "eks" {
 ┌──────────────────┴──────────────────────────────────┐
 │              Fargate Profiles                       │
 ├─────────────────────────────────────────────────────┤
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐   │
-│  │  CoreDNS   │  │Production  │  │  Staging   │   │
-│  │ (kube-sys) │  │ Namespace  │  │ Namespace  │   │
-│  └────────────┘  └────────────┘  └────────────┘   │
+│  ┌────────────┐  ┌────────────┐                    │
+│  │  CoreDNS   │  │  Default   │                    │
+│  │ (kube-sys) │  │ Namespace  │                    │
+│  └────────────┘  └────────────┘                    │
 │                                                     │
 │  ┌─────────────────────────────────────────────┐  │
 │  │     Pods run on serverless Fargate         │  │
@@ -137,8 +127,7 @@ terraform apply
 
 ### ⚙️ Operational Excellence
 - Automatic CoreDNS configuration for Fargate
-- Multiple Fargate profiles support
-- Namespace and label-based pod selectors
+- Default namespace Fargate profile included
 - Production-tested defaults
 
 ## Important Notes
@@ -158,6 +147,10 @@ terraform apply
 4. **CoreDNS**
    - Automatically configured to run on Fargate
    - Requires kubectl and AWS CLI for patching
+
+5. **Default Namespace**
+   - Fargate profile automatically created for default namespace
+   - All pods in default namespace run on Fargate
 
 ## Prerequisites
 
