@@ -1,23 +1,18 @@
-resource "aws_eks_fargate_profile" "main" {
-  for_each = var.fargate_profiles
-
+# Default Fargate Profile for default namespace
+resource "aws_eks_fargate_profile" "default" {
   cluster_name           = aws_eks_cluster.main.name
-  fargate_profile_name   = each.key
+  fargate_profile_name   = "default"
   pod_execution_role_arn = aws_iam_role.fargate_pod_execution.arn
   subnet_ids             = var.fargate_subnet_ids
 
-  dynamic "selector" {
-    for_each = each.value.selectors
-    content {
-      namespace = selector.value.namespace
-      labels    = lookup(selector.value, "labels", {})
-    }
+  selector {
+    namespace = "default"
   }
 
   tags = merge(
     var.tags,
     {
-      Name = "${var.cluster_name}-${each.key}"
+      Name = "${var.cluster_name}-default"
     }
   )
 

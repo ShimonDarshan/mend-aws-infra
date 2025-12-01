@@ -67,19 +67,19 @@ output "cluster_oidc_issuer_url" {
 # Fargate Outputs
 # ========================================
 
-output "fargate_profile_ids" {
-  description = "IDs of the Fargate profiles"
-  value       = { for k, v in aws_eks_fargate_profile.main : k => v.id }
+output "fargate_profile_id" {
+  description = "ID of the default Fargate profile"
+  value       = aws_eks_fargate_profile.default.id
 }
 
-output "fargate_profile_arns" {
-  description = "ARNs of the Fargate profiles"
-  value       = { for k, v in aws_eks_fargate_profile.main : k => v.arn }
+output "fargate_profile_arn" {
+  description = "ARN of the default Fargate profile"
+  value       = aws_eks_fargate_profile.default.arn
 }
 
-output "fargate_profile_statuses" {
-  description = "Status of the Fargate profiles"
-  value       = { for k, v in aws_eks_fargate_profile.main : k => v.status }
+output "fargate_profile_status" {
+  description = "Status of the default Fargate profile"
+  value       = aws_eks_fargate_profile.default.status
 }
 
 output "fargate_pod_execution_role_arn" {
