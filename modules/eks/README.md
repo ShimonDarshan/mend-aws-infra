@@ -44,7 +44,6 @@ Production-ready Terraform module for deploying an AWS EKS cluster with Fargate 
 | endpoint_private_access | Enable private endpoint | true |
 | endpoint_public_access | Enable public endpoint | false |
 | public_access_cidrs | CIDRs for public access | [] |
-| fargate_profiles | Map of Fargate profile definitions | {} |
 | vpc_cni_addon_version | VPC CNI addon version | null (latest) |
 | kube_proxy_addon_version | kube-proxy addon version | null (latest) |
 | coredns_addon_version | CoreDNS addon version | null (latest) |
@@ -58,14 +57,14 @@ Production-ready Terraform module for deploying an AWS EKS cluster with Fargate 
 - `cluster_certificate_authority_data` - CA certificate data
 - `cluster_security_group_id` - Cluster security group ID
 - `fargate_pod_security_group_id` - Fargate pod security group ID
-- `fargate_profile_ids` - Map of Fargate profile IDs
+- `fargate_profile_id` - Fargate profile ID
 - `fargate_pod_execution_role_arn` - Fargate pod execution IAM role ARN
 
 ## Usage Example
 
 ```hcl
 module "eks" {
-  source = "./modules/eks"
+  source = "github.com/ShimonDarshan/mend-aws-infra//modules/eks?ref=main"
 
   # Required
   cluster_name       = "my-fargate-cluster"
@@ -73,20 +72,6 @@ module "eks" {
   vpc_id             = "vpc-xxxxx"
   subnet_ids         = ["subnet-xxxxx", "subnet-yyyyy"]
   fargate_subnet_ids = ["subnet-private1", "subnet-private2"]
-
-  # Optional: Define custom Fargate profiles
-  fargate_profiles = {
-    app-profile = {
-      selectors = [
-        {
-          namespace = "production"
-          labels = {
-            app = "my-app"
-          }
-        }
-      ]
-    }
-  }
 
   tags = {
     Environment = "production"
@@ -128,9 +113,10 @@ fargate_profiles = {
 
 1. **Fargate Subnets**: Must be private subnets (no internet gateway route)
 2. **CoreDNS**: Automatically configured to run on Fargate
-3. **No EC2**: This module does not create any EC2 instances or node groups
-4. **Stateless Only**: Fargate is best for stateless applications
-5. **kubectl Access**: Requires AWS CLI and kubectl configured after cluster creation
+3. **Default Namespace**: Fargate profile automatically created for default namespace
+4. **No EC2**: This module does not create any EC2 instances or node groups
+5. **Stateless Only**: Fargate is best for stateless applications
+6. **kubectl Access**: Requires AWS CLI and kubectl configured after cluster creation
 
 ## Security Considerations
 

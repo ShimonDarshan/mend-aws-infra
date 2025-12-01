@@ -67,17 +67,6 @@ variable "fargate_subnet_ids" {
   type        = list(string)
 }
 
-variable "fargate_profiles" {
-  description = "Map of Fargate profile definitions"
-  type = map(object({
-    selectors = list(object({
-      namespace = string
-      labels    = optional(map(string), {})
-    }))
-  }))
-  default = {}
-}
-
 # ========================================
 # Security Group Configuration
 # ========================================
