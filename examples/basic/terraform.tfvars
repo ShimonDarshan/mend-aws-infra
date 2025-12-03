@@ -74,6 +74,6 @@ install_ingress_controller = true
 ingress_controller_version = "4.8.3"
 
 # DNS Configuration
-create_dns_record = false
+create_dns_record = true
 dns_zone_name     = "shimondarshan-aws-mend.com"
 dns_record_name   = "shimondarshan-aws-mend.com" # Use zone name for apex domain

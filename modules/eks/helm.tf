@@ -49,6 +49,34 @@ resource "helm_release" "mend" {
   namespace        = var.helm_namespace
   create_namespace = true
 
+  values = [
+    yamlencode({
+      ingress = {
+        enabled   = true
+        className = "nginx"
+        annotations = {
+          "nginx.ingress.kubernetes.io/backend-protocol"      = "HTTP"
+          "nginx.ingress.kubernetes.io/ssl-redirect"          = "false"
+          "nginx.ingress.kubernetes.io/proxy-connect-timeout" = "30"
+          "nginx.ingress.kubernetes.io/proxy-send-timeout"    = "30"
+          "nginx.ingress.kubernetes.io/proxy-read-timeout"    = "30"
+          "nginx.ingress.kubernetes.io/proxy-body-size"       = "0"
+        }
+        hosts = [
+          {
+            host = ""
+            paths = [
+              {
+                path     = "/"
+                pathType = "Prefix"
+              }
+            ]
+          }
+        ]
+      }
+    })
+  ]
+
   # Wait for nodes to be ready
   wait    = true
   timeout = 600

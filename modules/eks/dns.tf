@@ -18,6 +18,17 @@ data "aws_route53_zone" "main" {
   private_zone = false
 }
 
+# Get the NLB details
+data "aws_lb" "ingress_nlb" {
+  count = var.install_ingress_controller && var.create_dns_record ? 1 : 0
+
+  tags = {
+    "kubernetes.io/service-name" = "ingress-nginx/ingress-nginx-controller"
+  }
+
+  depends_on = [helm_release.ingress_nginx]
+}
+
 # Create DNS record pointing to the ingress load balancer
 resource "aws_route53_record" "ingress" {
   count = var.install_ingress_controller && var.create_dns_record ? 1 : 0
@@ -27,13 +38,10 @@ resource "aws_route53_record" "ingress" {
   type    = "A"
 
   alias {
-    name                   = data.kubernetes_service.ingress_nginx[0].status[0].load_balancer[0].ingress[0].hostname
-    zone_id               = data.aws_elb_hosted_zone_id.main.id
+    name                   = data.aws_lb.ingress_nlb[0].dns_name
+    zone_id                = data.aws_lb.ingress_nlb[0].zone_id
     evaluate_target_health = true
   }
 
-  depends_on = [helm_release.ingress_nginx]
+  depends_on = [data.aws_lb.ingress_nlb]
 }
-
-# Get ELB hosted zone ID for the region
-data "aws_elb_hosted_zone_id" "main" {}
