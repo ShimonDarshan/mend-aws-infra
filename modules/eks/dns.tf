@@ -18,15 +18,13 @@ data "aws_route53_zone" "main" {
   private_zone = false
 }
 
-# Get the NLB details
+# Get the NLB details to create alias record
 data "aws_lb" "ingress_nlb" {
   count = var.install_ingress_controller && var.create_dns_record ? 1 : 0
 
-  tags = {
-    "kubernetes.io/service-name" = "ingress-nginx/ingress-nginx-controller"
-  }
+  name = split("-", split(".", data.kubernetes_service.ingress_nginx[0].status[0].load_balancer[0].ingress[0].hostname)[0])[0]
 
-  depends_on = [helm_release.ingress_nginx]
+  depends_on = [data.kubernetes_service.ingress_nginx]
 }
 
 # Create DNS record pointing to the ingress load balancer
