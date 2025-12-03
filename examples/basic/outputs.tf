@@ -53,10 +53,10 @@
 #   value       = module.eks.ingress_controller_status
 # }
 
-# output "ingress_load_balancer_hostname" {
-#   description = "Load balancer hostname for ingress"
-#   value       = module.eks.ingress_load_balancer_hostname
-# }
+output "ingress_load_balancer_hostname" {
+  description = "Load balancer hostname for ingress"
+  value       = module.eks.ingress_load_balancer_hostname
+}
 
 # output "dns_record_name" {
 #   description = "DNS record created for ingress"
