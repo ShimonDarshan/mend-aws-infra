@@ -1,6 +1,12 @@
 terraform {
   required_version = ">= 1.0"
 
+  backend "s3" {
+    bucket = "terraform-shimon-mend-bucket"
+    key    = "basic/terraform.tfstate"
+    region = "ca-central-1"
+  }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
