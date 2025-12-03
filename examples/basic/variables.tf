@@ -1,3 +1,9 @@
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-east-1"
+}
+
 variable "cluster_name" {
   description = "Name of the EKS cluster"
   type        = string
@@ -53,12 +59,6 @@ variable "endpoint_public_access" {
 variable "public_access_cidrs" {
   description = "List of CIDR blocks that can access the public API server endpoint"
   type        = list(string)
-}
-
-variable "cluster_security_group_ids" {
-  description = "Additional security group IDs to attach to the EKS cluster"
-  type        = list(string)
-  default     = []
 }
 
 variable "cluster_log_types" {

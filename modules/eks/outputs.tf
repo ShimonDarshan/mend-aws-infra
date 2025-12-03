@@ -1,7 +1,3 @@
-# ========================================
-# Cluster Outputs
-# ========================================
-
 output "cluster_id" {
   description = "The name/id of the EKS cluster"
   value       = aws_eks_cluster.main.id
@@ -13,8 +9,18 @@ output "cluster_arn" {
 }
 
 output "cluster_endpoint" {
-  description = "Endpoint for your Kubernetes API server"
+  description = "Endpoint for EKS control plane"
   value       = aws_eks_cluster.main.endpoint
+}
+
+output "cluster_security_group_id" {
+  description = "Security group ID attached to the EKS cluster"
+  value       = aws_eks_cluster.main.vpc_config[0].cluster_security_group_id
+}
+
+output "cluster_certificate_authority_data" {
+  description = "Base64 encoded certificate data required to communicate with the cluster"
+  value       = aws_eks_cluster.main.certificate_authority[0].data
 }
 
 output "cluster_version" {
@@ -22,91 +28,80 @@ output "cluster_version" {
   value       = aws_eks_cluster.main.version
 }
 
-output "cluster_platform_version" {
-  description = "The platform version for the cluster"
-  value       = aws_eks_cluster.main.platform_version
+output "node_group_id" {
+  description = "EKS node group ID"
+  value       = aws_eks_node_group.main.id
 }
 
-output "cluster_status" {
-  description = "Status of the EKS cluster. One of CREATING, ACTIVE, DELETING, FAILED"
-  value       = aws_eks_cluster.main.status
+output "node_group_arn" {
+  description = "Amazon Resource Name (ARN) of the EKS Node Group"
+  value       = aws_eks_node_group.main.arn
 }
 
-output "cluster_certificate_authority_data" {
-  description = "Base64 encoded certificate data required to communicate with the cluster"
-  value       = aws_eks_cluster.main.certificate_authority[0].data
-  sensitive   = true
-}
-
-output "cluster_security_group_id" {
-  description = "Security group ID attached to the EKS cluster control plane"
-  value       = aws_security_group.eks_cluster.id
-}
-
-output "fargate_pod_security_group_id" {
-  description = "Security group ID attached to Fargate pods"
-  value       = aws_security_group.eks_fargate_pods.id
+output "node_group_status" {
+  description = "Status of the EKS node group"
+  value       = aws_eks_node_group.main.status
 }
 
 output "cluster_iam_role_arn" {
   description = "IAM role ARN of the EKS cluster"
-  value       = aws_iam_role.eks_cluster.arn
+  value       = aws_iam_role.cluster.arn
 }
 
-output "cluster_iam_role_name" {
-  description = "IAM role name of the EKS cluster"
-  value       = aws_iam_role.eks_cluster.name
+output "node_iam_role_arn" {
+  description = "IAM role ARN of the EKS node group"
+  value       = aws_iam_role.node.arn
 }
 
-output "cluster_oidc_issuer_url" {
-  description = "The URL on the EKS cluster OIDC Issuer"
-  value       = try(aws_eks_cluster.main.identity[0].oidc[0].issuer, null)
+# VPC Outputs
+output "vpc_id" {
+  description = "ID of the VPC"
+  value       = aws_vpc.main.id
 }
 
-# ========================================
-# Fargate Outputs
-# ========================================
-
-output "fargate_profile_id" {
-  description = "ID of the default Fargate profile"
-  value       = aws_eks_fargate_profile.default.id
+output "vpc_cidr" {
+  description = "CIDR block of the VPC"
+  value       = aws_vpc.main.cidr_block
 }
 
-output "fargate_profile_arn" {
-  description = "ARN of the default Fargate profile"
-  value       = aws_eks_fargate_profile.default.arn
+output "public_subnet_ids" {
+  description = "IDs of public subnets"
+  value       = aws_subnet.public[*].id
 }
 
-output "fargate_profile_status" {
-  description = "Status of the default Fargate profile"
-  value       = aws_eks_fargate_profile.default.status
+output "private_subnet_ids" {
+  description = "IDs of private subnets"
+  value       = aws_subnet.private[*].id
 }
 
-output "fargate_pod_execution_role_arn" {
-  description = "IAM role ARN for Fargate pod execution"
-  value       = aws_iam_role.fargate_pod_execution.arn
+output "nat_gateway_ids" {
+  description = "IDs of NAT Gateways"
+  value       = aws_nat_gateway.main[*].id
 }
 
-output "fargate_pod_execution_role_name" {
-  description = "IAM role name for Fargate pod execution"
-  value       = aws_iam_role.fargate_pod_execution.name
+# Helm Outputs
+output "mend_chart_status" {
+  description = "Status of the Mend Helm chart deployment"
+  value       = var.install_mend_chart ? helm_release.mend[0].status : "not_installed"
 }
 
-# ========================================
-# Add-on Outputs
-# ========================================
-
-output "vpc_cni_addon_version" {
-  description = "Version of VPC CNI addon"
-  value       = aws_eks_addon.vpc_cni.addon_version
+output "mend_chart_namespace" {
+  description = "Namespace where Mend chart is installed"
+  value       = var.install_mend_chart ? helm_release.mend[0].namespace : null
 }
 
-output "kube_proxy_addon_version" {
-  description = "Version of kube-proxy addon"
-  value       = aws_eks_addon.kube_proxy.addon_version
+output "ingress_controller_status" {
+  description = "Status of nginx ingress controller deployment"
+  value       = var.install_ingress_controller ? helm_release.ingress_nginx[0].status : "not_installed"
 }
 
-output "coredns_addon_version" {
-  description = "Version of CoreDNS addon"
-  value       = aws_eks_addon.coredns.addon_version
+output "ingress_load_balancer_hostname" {
+  description = "Hostname of the ingress controller load balancer"
+  value       = var.install_ingress_controller ? try(data.kubernetes_service.ingress_nginx[0].status[0].load_balancer[0].ingress[0].hostname, null) : null
 }
+
+output "dns_record_name" {
+  description = "DNS record name created for ingress"
+  value       = var.create_dns_record ? aws_route53_record.ingress[0].fqdn : null
+}
+
