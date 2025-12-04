@@ -1,66 +1,60 @@
-# EKS Cluster IAM Role
-resource "aws_iam_role" "eks_cluster" {
-  name               = "${var.cluster_name}-eks-cluster-role"
-  assume_role_policy = data.aws_iam_policy_document.eks_cluster_assume_role.json
+# IAM Role for EKS Cluster
+resource "aws_iam_role" "cluster" {
+  name = "${var.cluster_name}-cluster-role"
 
-  tags = merge(
-    var.tags,
-    {
-      Name = "${var.cluster_name}-eks-cluster-role"
-    }
-  )
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "eks.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = var.tags
 }
 
-data "aws_iam_policy_document" "eks_cluster_assume_role" {
-  statement {
-    effect = "Allow"
-
-    principals {
-      type        = "Service"
-      identifiers = ["eks.amazonaws.com"]
-    }
-
-    actions = ["sts:AssumeRole"]
-  }
-}
-
-resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+resource "aws_iam_role_policy_attachment" "cluster_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-  role       = aws_iam_role.eks_cluster.name
+  role       = aws_iam_role.cluster.name
 }
 
-resource "aws_iam_role_policy_attachment" "eks_vpc_resource_controller" {
+resource "aws_iam_role_policy_attachment" "vpc_resource_controller" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
-  role       = aws_iam_role.eks_cluster.name
+  role       = aws_iam_role.cluster.name
 }
 
-# EKS Fargate Pod Execution IAM Role
-resource "aws_iam_role" "fargate_pod_execution" {
-  name               = "${var.cluster_name}-fargate-pod-execution-role"
-  assume_role_policy = data.aws_iam_policy_document.fargate_pod_execution_assume_role.json
+# IAM Role for EKS Node Group
+resource "aws_iam_role" "node" {
+  name = "${var.cluster_name}-node-role"
 
-  tags = merge(
-    var.tags,
-    {
-      Name = "${var.cluster_name}-fargate-pod-execution-role"
-    }
-  )
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = var.tags
 }
 
-data "aws_iam_policy_document" "fargate_pod_execution_assume_role" {
-  statement {
-    effect = "Allow"
-
-    principals {
-      type        = "Service"
-      identifiers = ["eks-fargate-pods.amazonaws.com"]
-    }
-
-    actions = ["sts:AssumeRole"]
-  }
+resource "aws_iam_role_policy_attachment" "node_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.node.name
 }
 
-resource "aws_iam_role_policy_attachment" "fargate_pod_execution_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy"
-  role       = aws_iam_role.fargate_pod_execution.name
+resource "aws_iam_role_policy_attachment" "cni_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+  role       = aws_iam_role.node.name
+}
+
+resource "aws_iam_role_policy_attachment" "registry_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = aws_iam_role.node.name
 }

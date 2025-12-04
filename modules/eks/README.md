@@ -1,77 +1,55 @@
-# AWS EKS Fargate Module
+# AWS EKS Terraform Module
 
-Production-ready Terraform module for deploying an AWS EKS cluster with Fargate profiles. Optimized for stateless applications running on serverless compute.
+A production-ready Terraform module for creating Amazon EKS (Elastic Kubernetes Service) clusters with managed node groups.
 
 ## Features
 
-1. **Serverless Compute**:
-   - EKS Fargate profiles for pod execution
-   - No EC2 instances to manage
-   - Automatic scaling
-   - Pay only for resources used
+- **Zero Defaults**: All parameters must be explicitly provided - no default IP addresses or CIDR blocks
+- **Modular Design**: Organized into separate files by resource type
+- **IAM Management**: Automated IAM role and policy creation for cluster and nodes
+- **Flexible Configuration**: Full control over networking, scaling, and instance types
+- **Control Plane Logging**: Configurable EKS control plane logging
+- **Secure by Default**: Requires explicit specification of all security parameters
 
-2. **Security First**:
-   - Private cluster endpoint by default
-   - AWS-managed encryption for secrets
-   - Strict security group rules
-   - Input validation on critical variables
+## Module Structure
 
-3. **DNS Support**:
-   - Dedicated CoreDNS Fargate profile
-   - Automatic CoreDNS patching for Fargate compatibility
-   - VPC CNI for pod networking
+```
+modules/eks/
+├── cluster.tf        # EKS cluster resource
+├── node-group.tf     # Managed node group configuration
+├── iam.tf           # IAM roles and policies
+├── variables.tf     # Input variables (no defaults for critical params)
+├── outputs.tf       # Module outputs
+└── versions.tf      # Provider version constraints
+```
 
-4. **Production Ready**:
-   - All required variables must be provided
-   - Secure defaults for optional settings
-   - Comprehensive outputs
-   - Proper resource dependencies
-
-## Required Inputs
-
-| Name | Description | Type |
-|------|-------------|------|
-| cluster_name | Name of the EKS cluster | string |
-| kubernetes_version | Kubernetes version (1.28+) | string |
-| vpc_id | VPC ID | string |
-| subnet_ids | Subnet IDs for control plane | list(string) |
-| fargate_subnet_ids | Private subnet IDs for Fargate | list(string) |
-
-## Optional Inputs
-
-| Name | Description | Default |
-|------|-------------|---------|
-| endpoint_private_access | Enable private endpoint | true |
-| endpoint_public_access | Enable public endpoint | false |
-| public_access_cidrs | CIDRs for public access | [] |
-| vpc_cni_addon_version | VPC CNI addon version | null (latest) |
-| kube_proxy_addon_version | kube-proxy addon version | null (latest) |
-| coredns_addon_version | CoreDNS addon version | null (latest) |
-| cluster_security_group_additional_rules | Additional SG rules | [] |
-| tags | Resource tags | map(string) |
-
-## Outputs
-
-- `cluster_id` - EKS cluster ID
-- `cluster_endpoint` - Kubernetes API endpoint
-- `cluster_certificate_authority_data` - CA certificate data
-- `cluster_security_group_id` - Cluster security group ID
-- `fargate_pod_security_group_id` - Fargate pod security group ID
-- `fargate_profile_id` - Fargate profile ID
-- `fargate_pod_execution_role_arn` - Fargate pod execution IAM role ARN
-
-## Usage Example
+## Usage
 
 ```hcl
 module "eks" {
-  source = "github.com/ShimonDarshan/mend-aws-infra//modules/eks?ref=main"
+  source = "../../modules/eks"
 
-  # Required
-  cluster_name       = "my-fargate-cluster"
-  kubernetes_version = "1.30"
-  vpc_id             = "vpc-xxxxx"
-  subnet_ids         = ["subnet-xxxxx", "subnet-yyyyy"]
-  fargate_subnet_ids = ["subnet-private1", "subnet-private2"]
+  # Cluster configuration
+  cluster_name       = "my-eks-cluster"
+  kubernetes_version = "1.28"
+  subnet_ids         = ["subnet-abc123", "subnet-def456", "subnet-ghi789"]
+
+  # Network access control - NO DEFAULTS
+  endpoint_private_access = true
+  endpoint_public_access  = true
+  public_access_cidrs     = ["203.0.113.0/24", "198.51.100.0/24"]
+
+  # Logging configuration
+  cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+
+  # Node group configuration
+  desired_capacity = 3
+  max_capacity     = 5
+  min_capacity     = 1
+  instance_types   = ["t3.medium"]
+  capacity_type    = "ON_DEMAND"
+  disk_size        = 20
+  max_unavailable  = 1
 
   tags = {
     Environment = "production"
@@ -80,71 +58,115 @@ module "eks" {
 }
 ```
 
-## Fargate Profile Configuration
+## Examples
 
-The module automatically creates a CoreDNS Fargate profile. Define additional profiles for your applications:
+See the [examples/basic](../../examples/basic/) directory for a complete working example.
 
-```hcl
-fargate_profiles = {
-  # Profile for production namespace
-  production = {
-    selectors = [
-      {
-        namespace = "production"
-      }
-    ]
-  }
-  
-  # Profile with label selector
-  backend = {
-    selectors = [
-      {
-        namespace = "production"
-        labels = {
-          tier = "backend"
-        }
-      }
-    ]
-  }
-}
-```
+## Requirements
 
-## Important Notes
+| Name | Version |
+|------|---------|
+| terraform | >= 1.0 |
+| aws | >= 5.0 |
 
-1. **Fargate Subnets**: Must be private subnets (no internet gateway route)
-2. **CoreDNS**: Automatically configured to run on Fargate
-3. **Default Namespace**: Fargate profile automatically created for default namespace
-4. **No EC2**: This module does not create any EC2 instances or node groups
-5. **Stateless Only**: Fargate is best for stateless applications
-6. **kubectl Access**: Requires AWS CLI and kubectl configured after cluster creation
+## Required Inputs
 
-## Security Considerations
+All of the following variables **must** be provided - there are no defaults for critical security parameters:
 
-- Cluster is private by default
-- Public access requires explicit CIDR restrictions
-- KMS encryption is optional but recommended for production
-- Security groups follow least-privilege principle
-- No SSH access required (no EC2 nodes)
+| Name | Description | Type |
+|------|-------------|------|
+| cluster_name | Name of the EKS cluster | `string` |
+| kubernetes_version | Kubernetes version (e.g., "1.28") | `string` |
+| subnet_ids | List of subnet IDs (minimum 2, different AZs recommended) | `list(string)` |
+| endpoint_private_access | Enable private API server endpoint | `bool` |
+| endpoint_public_access | Enable public API server endpoint | `bool` |
+| public_access_cidrs | CIDR blocks allowed to access public endpoint | `list(string)` |
+| cluster_log_types | Control plane logging types to enable | `list(string)` |
+| desired_capacity | Desired number of worker nodes | `number` |
+| max_capacity | Maximum number of worker nodes | `number` |
+| min_capacity | Minimum number of worker nodes | `number` |
+| instance_types | EC2 instance types for node group | `list(string)` |
+| capacity_type | Capacity type: "ON_DEMAND" or "SPOT" | `string` |
+| disk_size | Disk size in GiB for worker nodes | `number` |
+| max_unavailable | Max nodes unavailable during updates | `number` |
+
+## Optional Inputs
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| cluster_security_group_ids | Additional security group IDs | `list(string)` | `[]` |
+| tags | Tags to apply to all resources | `map(string)` | `{}` |
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| cluster_id | EKS cluster ID |
+| cluster_arn | EKS cluster ARN |
+| cluster_endpoint | EKS API server endpoint |
+| cluster_security_group_id | Cluster security group ID |
+| cluster_certificate_authority_data | Base64 encoded CA certificate (sensitive) |
+| cluster_version | Kubernetes version |
+| node_group_id | Node group ID |
+| node_group_arn | Node group ARN |
+| node_group_status | Node group status |
+| cluster_iam_role_arn | Cluster IAM role ARN |
+| node_iam_role_arn | Node IAM role ARN |
 
 ## Prerequisites
 
-- Terraform >= 1.3.0
-- AWS Provider >= 5.0
-- VPC with private subnets
-- AWS CLI (for CoreDNS patching)
-- kubectl (for CoreDNS patching)
+Before using this module:
 
-## Module Structure
+1. **VPC Setup**: Have an existing VPC with subnets in at least 2 availability zones
+2. **Subnet Planning**: Ensure subnets have sufficient IP addresses for your workload
+3. **Network Access**: Know which CIDR blocks should access your cluster
+4. **AWS Credentials**: Configure AWS credentials with appropriate permissions
 
+## Security Considerations
+
+### No Default IP Addresses
+
+This module **does not provide default values** for:
+- `public_access_cidrs` - You must explicitly specify which IPs can access the cluster
+- Network configuration - All endpoint access settings must be explicitly set
+
+### Best Practices
+
+1. **Private Access**: Enable `endpoint_private_access` for production workloads
+2. **Restrict Public Access**: 
+   - Set `endpoint_public_access = false` if possible
+   - If public access needed, restrict `public_access_cidrs` to known IP ranges
+3. **Logging**: Enable all `cluster_log_types` for audit and compliance
+4. **Subnets**: Use private subnets for node groups when possible
+
+## Post-Deployment
+
+After deploying the cluster, configure kubectl:
+
+```bash
+aws eks update-kubeconfig --region <your-region> --name <cluster-name>
 ```
-modules/eks/
-├── addons.tf           # EKS managed addons
-├── data.tf             # Data sources
-├── eks.tf              # EKS cluster
-├── fargate.tf          # Fargate profiles
-├── iam.tf              # IAM roles
-├── outputs.tf          # Module outputs
-├── security_groups.tf  # Security groups
-├── variables.tf        # Input variables
-└── versions.tf         # Provider requirements
+
+Verify the cluster:
+
+```bash
+kubectl get nodes
+kubectl get pods --all-namespaces
 ```
+
+## IAM Roles Created
+
+The module creates the following IAM roles:
+
+1. **Cluster Role** (`<cluster-name>-cluster-role`)
+   - AmazonEKSClusterPolicy
+   - AmazonEKSVPCResourceController
+
+2. **Node Role** (`<cluster-name>-node-role`)
+   - AmazonEKSWorkerNodePolicy
+   - AmazonEKS_CNI_Policy
+   - AmazonEC2ContainerRegistryReadOnly
+
+## License
+
+MIT
