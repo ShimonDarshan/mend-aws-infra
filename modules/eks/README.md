@@ -1,50 +1,34 @@
-# AWS EKS Terraform Module
+# EKS Terraform Module
 
-A production-ready Terraform module for creating Amazon EKS (Elastic Kubernetes Service) clusters with managed node groups.
-
-## Features
-
-- **Zero Defaults**: All parameters must be explicitly provided - no default IP addresses or CIDR blocks
-- **Modular Design**: Organized into separate files by resource type
-- **IAM Management**: Automated IAM role and policy creation for cluster and nodes
-- **Flexible Configuration**: Full control over networking, scaling, and instance types
-- **Control Plane Logging**: Configurable EKS control plane logging
-- **Secure by Default**: Requires explicit specification of all security parameters
-
-## Module Structure
-
-```
-modules/eks/
-├── cluster.tf        # EKS cluster resource
-├── node-group.tf     # Managed node group configuration
-├── iam.tf           # IAM roles and policies
-├── variables.tf     # Input variables (no defaults for critical params)
-├── outputs.tf       # Module outputs
-└── versions.tf      # Provider version constraints
-```
+Creates an AWS EKS cluster with VPC, managed node groups, and security configurations.
 
 ## Usage
 
 ```hcl
 module "eks" {
-  source = "../../modules/eks"
+  source = "./modules/eks"
 
-  # Cluster configuration
-  cluster_name       = "my-eks-cluster"
+  # Cluster
+  cluster_name       = "my-cluster"
   kubernetes_version = "1.28"
-  subnet_ids         = ["subnet-abc123", "subnet-def456", "subnet-ghi789"]
 
-  # Network access control - NO DEFAULTS
+  # VPC
+  vpc_name             = "my-vpc"
+  vpc_cidr             = "10.0.0.0/16"
+  availability_zones   = ["us-east-1a", "us-east-1b"]
+  public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+  private_subnet_cidrs = ["10.0.11.0/24", "10.0.12.0/24"]
+  enable_nat_gateway   = true
+
+  # Security
   endpoint_private_access = true
   endpoint_public_access  = true
-  public_access_cidrs     = ["203.0.113.0/24", "198.51.100.0/24"]
+  public_access_cidrs     = ["0.0.0.0/0"]  # Restrict in production
+  cluster_log_types       = ["api", "audit"]
 
-  # Logging configuration
-  cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
-
-  # Node group configuration
-  desired_capacity = 3
-  max_capacity     = 5
+  # Nodes
+  desired_capacity = 2
+  max_capacity     = 4
   min_capacity     = 1
   instance_types   = ["t3.medium"]
   capacity_type    = "ON_DEMAND"
@@ -52,121 +36,79 @@ module "eks" {
   max_unavailable  = 1
 
   tags = {
-    Environment = "production"
-    ManagedBy   = "terraform"
+    Environment = "dev"
   }
 }
 ```
 
-## Examples
+## What Gets Created
 
-See the [examples/basic](../../examples/basic/) directory for a complete working example.
+- VPC with public and private subnets
+- Internet Gateway and NAT Gateways
+- EKS cluster control plane
+- Managed node group in private subnets
+- Security groups (cluster, nodes, pods)
+- IAM roles and policies
 
-## Requirements
+## Security Features
 
-| Name | Version |
-|------|---------|
-| terraform | >= 1.0 |
-| aws | >= 5.0 |
+✅ Dedicated security groups with least privilege
+✅ Nodes in private subnets only
+✅ No SSH access to nodes
+✅ Control plane logging enabled
+✅ Network isolation between cluster/nodes/pods
 
-## Required Inputs
+## Variables
 
-All of the following variables **must** be provided - there are no defaults for critical security parameters:
+### Required
 
 | Name | Description | Type |
 |------|-------------|------|
-| cluster_name | Name of the EKS cluster | `string` |
-| kubernetes_version | Kubernetes version (e.g., "1.28") | `string` |
-| subnet_ids | List of subnet IDs (minimum 2, different AZs recommended) | `list(string)` |
-| endpoint_private_access | Enable private API server endpoint | `bool` |
-| endpoint_public_access | Enable public API server endpoint | `bool` |
-| public_access_cidrs | CIDR blocks allowed to access public endpoint | `list(string)` |
-| cluster_log_types | Control plane logging types to enable | `list(string)` |
-| desired_capacity | Desired number of worker nodes | `number` |
-| max_capacity | Maximum number of worker nodes | `number` |
-| min_capacity | Minimum number of worker nodes | `number` |
-| instance_types | EC2 instance types for node group | `list(string)` |
-| capacity_type | Capacity type: "ON_DEMAND" or "SPOT" | `string` |
-| disk_size | Disk size in GiB for worker nodes | `number` |
-| max_unavailable | Max nodes unavailable during updates | `number` |
+| cluster_name | EKS cluster name | string |
+| kubernetes_version | Kubernetes version | string |
+| vpc_name | VPC name | string |
+| vpc_cidr | VPC CIDR block | string |
+| availability_zones | List of AZs | list(string) |
+| public_subnet_cidrs | Public subnet CIDRs | list(string) |
+| private_subnet_cidrs | Private subnet CIDRs | list(string) |
+| enable_nat_gateway | Enable NAT gateway | bool |
+| endpoint_private_access | Enable private endpoint | bool |
+| endpoint_public_access | Enable public endpoint | bool |
+| public_access_cidrs | CIDRs for public access | list(string) |
+| cluster_log_types | Control plane logs to enable | list(string) |
+| desired_capacity | Desired node count | number |
+| max_capacity | Max node count | number |
+| min_capacity | Min node count | number |
+| instance_types | Node instance types | list(string) |
+| capacity_type | ON_DEMAND or SPOT | string |
+| disk_size | Node disk size (GiB) | number |
+| max_unavailable | Max unavailable during updates | number |
 
-## Optional Inputs
+### Optional
 
-| Name | Description | Type | Default |
-|------|-------------|------|---------|
-| cluster_security_group_ids | Additional security group IDs | `list(string)` | `[]` |
-| tags | Tags to apply to all resources | `map(string)` | `{}` |
+| Name | Default | Description |
+|------|---------|-------------|
+| tags | {} | Tags for all resources |
+| cluster_security_group_ids | [] | Additional cluster SGs |
+| install_ingress_controller | false | Install nginx ingress |
+| install_mend_chart | false | Install Mend chart |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
 | cluster_id | EKS cluster ID |
-| cluster_arn | EKS cluster ARN |
-| cluster_endpoint | EKS API server endpoint |
-| cluster_security_group_id | Cluster security group ID |
-| cluster_certificate_authority_data | Base64 encoded CA certificate (sensitive) |
-| cluster_version | Kubernetes version |
-| node_group_id | Node group ID |
-| node_group_arn | Node group ARN |
-| node_group_status | Node group status |
-| cluster_iam_role_arn | Cluster IAM role ARN |
-| node_iam_role_arn | Node IAM role ARN |
+| cluster_endpoint | API server endpoint |
+| vpc_id | VPC ID |
 
-## Prerequisites
-
-Before using this module:
-
-1. **VPC Setup**: Have an existing VPC with subnets in at least 2 availability zones
-2. **Subnet Planning**: Ensure subnets have sufficient IP addresses for your workload
-3. **Network Access**: Know which CIDR blocks should access your cluster
-4. **AWS Credentials**: Configure AWS credentials with appropriate permissions
-
-## Security Considerations
-
-### No Default IP Addresses
-
-This module **does not provide default values** for:
-- `public_access_cidrs` - You must explicitly specify which IPs can access the cluster
-- Network configuration - All endpoint access settings must be explicitly set
-
-### Best Practices
-
-1. **Private Access**: Enable `endpoint_private_access` for production workloads
-2. **Restrict Public Access**: 
-   - Set `endpoint_public_access = false` if possible
-   - If public access needed, restrict `public_access_cidrs` to known IP ranges
-3. **Logging**: Enable all `cluster_log_types` for audit and compliance
-4. **Subnets**: Use private subnets for node groups when possible
-
-## Post-Deployment
-
-After deploying the cluster, configure kubectl:
+## Connect to Cluster
 
 ```bash
-aws eks update-kubeconfig --region <your-region> --name <cluster-name>
-```
-
-Verify the cluster:
-
-```bash
+aws eks update-kubeconfig --region <region> --name <cluster-name>
 kubectl get nodes
-kubectl get pods --all-namespaces
 ```
 
-## IAM Roles Created
+## Requirements
 
-The module creates the following IAM roles:
-
-1. **Cluster Role** (`<cluster-name>-cluster-role`)
-   - AmazonEKSClusterPolicy
-   - AmazonEKSVPCResourceController
-
-2. **Node Role** (`<cluster-name>-node-role`)
-   - AmazonEKSWorkerNodePolicy
-   - AmazonEKS_CNI_Policy
-   - AmazonEC2ContainerRegistryReadOnly
-
-## License
-
-MIT
+- Terraform >= 1.0
+- AWS Provider >= 5.0
