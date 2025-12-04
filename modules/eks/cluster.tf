@@ -9,7 +9,7 @@ resource "aws_eks_cluster" "main" {
     endpoint_private_access = var.endpoint_private_access
     endpoint_public_access  = var.endpoint_public_access
     public_access_cidrs     = var.public_access_cidrs
-    security_group_ids      = var.cluster_security_group_ids
+    security_group_ids      = concat([aws_security_group.cluster.id], var.cluster_security_group_ids)
   }
 
   enabled_cluster_log_types = var.cluster_log_types
